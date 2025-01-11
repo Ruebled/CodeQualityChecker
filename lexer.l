@@ -52,6 +52,11 @@ void report_error(const char *error_message, int line, const char *error_text);
     report_error("Magic number usage", line_number, yytext);
 }
 
+ /* Detect goto usage */
+goto[ \t]+[a-zA-Z_][a-zA-Z0-9_]*; {
+	report_error("Use of goto statement", line_number, yytext);
+}
+
  /* Ignore other characters and whitespace */
 .|\n { /* No-op */ }
 %%

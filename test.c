@@ -14,7 +14,10 @@ int var1, var2;
 void undocumentedFunction() {
 	// Local variable // Magic number
     int a = 42;
+	goto label;
 	int var_here = 36;
+label:
+	return;
 }
 
 // Function missing documentation
