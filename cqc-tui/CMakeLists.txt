@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.22)
 
-project(ftxui-starter
+project(cqc-tui
   LANGUAGES CXX
   VERSION 1.0.0
 )
@@ -26,13 +26,13 @@ FetchContent_Declare(ftxui
 FetchContent_MakeAvailable(ftxui)
 # ------------------------------------------------------------------------------
 
-add_executable(ftxui-starter src/main.cpp)
-target_include_directories(ftxui-starter PRIVATE src)
+add_executable(cqc-tui src/main.cpp)
+target_include_directories(cqc-tui PRIVATE src)
 
-target_link_libraries(ftxui-starter
+target_link_libraries(cqc-tui
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
-  PRIVATE ftxui::component  # Not needed for this example.
+  PRIVATE ftxui::component
 )
 
 if (EMSCRIPTEN)
