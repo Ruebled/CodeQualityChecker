@@ -197,13 +197,16 @@ int main(int argc, char** argv) {
     left_tree.push_back("File: " + base_path.filename().string());
   }
 
+  // Modify this section to display only the file name or directory name
   auto left_panel_buttons = Container::Vertical({});
   for (const auto& item : left_tree) {
+    std::string display_name =
+        fs::path(item).filename().string();  // Get the file name only
     left_panel_buttons->Add(Button(
-        item,
+        display_name,  // Display only the file name
         [&, item] {
-          auto file_path = fs::path(base_path) / item;  // Append to base path
-          std::cout << "Clicked on " << file_path << std::endl;
+          auto file_path = fs::path(base_path) /
+                           item;  // Append to base path for actual file path
           if (fs::is_regular_file(file_path)) {
             update_editor(file_path.string());
           }
