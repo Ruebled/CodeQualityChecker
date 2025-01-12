@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
   auto screen = ScreenInteractive::Fullscreen();
 
   // Track the current highlighted line
-  int current_line = 0;
+  int current_line = -1;
   // Track the current scroll position
   int scroll_offset = 0;
   // Number of visible lines in the editor
