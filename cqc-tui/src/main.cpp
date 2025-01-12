@@ -42,6 +42,19 @@ std::vector<Error> run_lexer(const std::string& filename) {
   return errors;
 }
 
+std::string replace_tabs_with_spaces(const std::string& str,
+                                     int tab_width = 4) {
+  std::string result;
+  for (char ch : str) {
+    if (ch == '\t') {
+      result.append(tab_width, ' ');
+    } else {
+      result.push_back(ch);
+    }
+  }
+  return result;
+}
+
 int main(int argc, char** argv) {
   if (argc < 2) {
     std::cerr << "Usage: " << argv[0] << " <file>" << std::endl;
@@ -85,7 +98,7 @@ int main(int argc, char** argv) {
     for (size_t i = scroll_offset;
          i < scroll_offset + visible_lines && i < file_lines.size(); ++i) {
       auto line_number = text(std::to_string(i + 1) + " ") | color(Color::Blue);
-      auto line_content = text(file_lines[i]);
+      auto line_content = text(replace_tabs_with_spaces(file_lines[i]));
       if (static_cast<int>(i) == current_line) {
         elements.push_back(hbox({line_number, line_content}) |
                            bgcolor(Color::GrayDark));
