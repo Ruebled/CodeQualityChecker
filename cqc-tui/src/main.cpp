@@ -144,9 +144,11 @@ int main(int argc, char** argv) {
   auto left_panel_buttons = Container::Vertical({});
 
   if (fs::is_directory(filename)) {
-    build_tree(filename, left_tree);  // Parse the directory to build the tree
+    // If it's a directory, recursively build the tree
+    build_tree(filename, left_tree);
   } else {
-    left_tree.push_back("File: " + filename);  // If it's a file, show it
+    // If it's a file, just show the file name
+    left_tree.push_back("File: " + fs::path(filename).filename().string());
   }
 
   // Create clickable buttons for the left panel
