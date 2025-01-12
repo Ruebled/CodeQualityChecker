@@ -78,6 +78,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // Expand the full path of the given argument
+  fs::path base_path = fs::absolute(argv[1]);
+  if (!fs::exists(base_path)) {
+    std::cerr << "Path does not exist: " << argv[1] << std::endl;
+    return 1;
+  }
+
   std::string filename = argv[1];
   std::vector<std::string> file_lines;
 
@@ -107,15 +114,66 @@ int main(int argc, char** argv) {
   // Number of visible lines in the editor
   int visible_lines = 25;
 
-  // Renderer for the file content
+  std::string base_path_str = base_path.string();
+  std::vector<std::string> dynamic_file_lines;
+  std::vector<Error> dynamic_errors;
+
+  auto error_list = Container::Vertical({});
+  auto update_error_list = [&] {
+    error_list->DetachAllChildren();  // Clear previous error buttons
+    for (const auto& error : dynamic_errors) {
+      auto error_button = Button(
+          "Line " + std::to_string(error.line) + ": " + error.message,
+          [&] {
+            current_line = error.line - 1;
+            scroll_offset = std::max(0, error.line - 1 - visible_lines / 2);
+          },
+          ButtonOption::Ascii());
+      error_list->Add(error_button);
+    }
+  };
+
+  auto update_editor = [&](const std::string& file_path) {
+    // Load file content
+    dynamic_file_lines.clear();
+    std::ifstream file(file_path);
+    if (file) {
+      std::string line;
+      while (std::getline(file, line)) {
+        dynamic_file_lines.push_back(line);
+      }
+    } else {
+      std::cerr << "Failed to open file: " << file_path << std::endl;
+      return;
+    }
+
+    // Run lexer on the new file
+    dynamic_errors = run_lexer(file_path);
+
+    // Reset scroll and highlight positions
+    current_line = -1;
+    scroll_offset = 0;
+    update_error_list();  // Update the error list for the new file
+  };
+
+  // Generate the left panel based on the argument (file or directory)
+  std::vector<std::string> left_tree;
+
+  // Initialize editor with the provided argument
+  if (fs::is_regular_file(base_path)) {
+    update_editor(base_path_str);
+  }
+
   auto file_view = Renderer([&] {
-    scroll_offset = std::max(
-        0, std::min(scroll_offset, (int)file_lines.size() - visible_lines));
+    scroll_offset =
+        std::max(0, std::min(scroll_offset,
+                             (int)dynamic_file_lines.size() - visible_lines));
     Elements elements;
     for (size_t i = scroll_offset;
-         i < scroll_offset + visible_lines && i < file_lines.size(); ++i) {
+         i < scroll_offset + visible_lines && i < dynamic_file_lines.size();
+         ++i) {
       auto line_number = text(std::to_string(i + 1) + " ") | color(Color::Blue);
-      auto line_content = text(replace_tabs_with_spaces(file_lines[i]));
+      auto line_content = text(replace_tabs_with_spaces(dynamic_file_lines[i]));
       if (static_cast<int>(i) == current_line) {
         elements.push_back(hbox({line_number, line_content}) |
                            bgcolor(Color::GrayDark));
@@ -126,34 +184,31 @@ int main(int argc, char** argv) {
     return vbox(std::move(elements)) | vscroll_indicator | frame | flex;
   });
 
-  // Renderer for the error list with clickable items
-  auto error_list = Container::Vertical({});
-  for (const auto& error : errors) {
-    auto error_button = Button(
-        "Line " + std::to_string(error.line) + ": " + error.message,
-        [&] {
-          current_line = error.line - 1;
-          scroll_offset = std::max(0, error.line - 1 - visible_lines / 2);
-        },
-        ButtonOption::Ascii());
-    error_list->Add(error_button);
-  }
+  // Update the error list whenever the editor is updated
+  update_editor(filename);  // Initial load
+  update_error_list();
 
-  // Generate the left panel based on the argument (file or directory)
-  std::vector<std::string> left_tree;
-  auto left_panel_buttons = Container::Vertical({});
-
-  if (fs::is_directory(filename)) {
+  // Build the tree and buttons
+  if (fs::is_directory(base_path)) {
     // If it's a directory, recursively build the tree
-    build_tree(filename, left_tree);
+    build_tree(base_path, left_tree);
   } else {
     // If it's a file, just show the file name
-    left_tree.push_back("File: " + fs::path(filename).filename().string());
+    left_tree.push_back("File: " + base_path.filename().string());
   }
 
-  // Create clickable buttons for the left panel
+  auto left_panel_buttons = Container::Vertical({});
   for (const auto& item : left_tree) {
-    left_panel_buttons->Add(Button(item, [] {}, ButtonOption::Ascii()));
+    left_panel_buttons->Add(Button(
+        item,
+        [&, item] {
+          auto file_path = fs::path(base_path) / item;  // Append to base path
+          std::cout << "Clicked on " << file_path << std::endl;
+          if (fs::is_regular_file(file_path)) {
+            update_editor(file_path.string());
+          }
+        },
+        ButtonOption::Ascii()));
   }
 
   auto left_panel = Renderer(left_panel_buttons, [&] {
