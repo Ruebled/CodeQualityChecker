@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Run the lexer
-    printf("Analyzing file: %s\n", argv[1]);
+    //printf("Analyzing file: %s\n", argv[1]);
     yylex();
 
     fclose(yyin);

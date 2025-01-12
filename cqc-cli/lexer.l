@@ -63,6 +63,7 @@ goto[ \t]+[a-zA-Z_][a-zA-Z0-9_]*; {
 
 	/* Function to report errors with clear output formatting */
 void report_error(const char *error_message, int line, const char *error_text) {
-    fprintf(stderr, "Error [Line %d]: %s (Code: %s)\n", line, error_message, error_text);
+    //fprintf(stderr, "Error [Line %d]: %s (Code: %s)\n", line, error_message, error_text);
+    fprintf(stderr, "{\"message\": %s, \"line\": \"%d\"}\n", error_message, line);
 }
 
