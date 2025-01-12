@@ -249,26 +249,14 @@ int main(int argc, char** argv) {
   int value = 0;
   auto action = [&] { value++; };
 
-  // Menu bar with small buttons
-  auto button1 = Button("Run", action, ButtonOption::Ascii());
-  auto button2 = Button("Build", action, ButtonOption::Ascii());
-
-  // Menu bar layout
-  auto menu_bar = Container::Horizontal({
-      button1,
-      button2,
-  });
-
   // Final layout
   auto layout =
       Renderer(Container::Vertical({
-                   menu_bar,
                    container,
                }),
                [&] {
                  return vbox({
                             title,                       // Title
-                            hbox({menu_bar->Render()}),  // Menu bar
                             separator(),                 // Separator
                             container->Render() | flex,  // Resizable content
                         }) |
