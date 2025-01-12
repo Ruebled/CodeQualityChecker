@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -8,6 +9,7 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <nlohmann/json.hpp>
 
+namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 // Structure to store errors
@@ -42,6 +44,7 @@ std::vector<Error> run_lexer(const std::string& filename) {
   return errors;
 }
 
+// Function to replace tabs with spaces in the file content
 std::string replace_tabs_with_spaces(const std::string& str,
                                      int tab_width = 4) {
   std::string result;
@@ -55,25 +58,40 @@ std::string replace_tabs_with_spaces(const std::string& str,
   return result;
 }
 
+// Function to generate file tree for a directory
+void build_tree(fs::path dir_path,
+                std::vector<std::string>& tree,
+                std::string prefix = "") {
+  for (const auto& entry : fs::directory_iterator(dir_path)) {
+    if (fs::is_directory(entry)) {
+      build_tree(entry.path(), tree,
+                 prefix + entry.path().filename().string() + "/");
+    } else {
+      tree.push_back(prefix + entry.path().filename().string());
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " <file>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <file or directory>" << std::endl;
     return 1;
   }
 
   std::string filename = argv[1];
   std::vector<std::string> file_lines;
 
-  // Read the file content into lines
-  std::ifstream file(filename);
-  if (!file) {
-    std::cerr << "Error opening file: " << filename << std::endl;
-    return 1;
-  }
-
-  std::string line;
-  while (std::getline(file, line)) {
-    file_lines.push_back(line);
+  // Read file content if it's a file
+  if (fs::is_regular_file(filename)) {
+    std::ifstream file(filename);
+    if (!file) {
+      std::cerr << "Error opening file: " << filename << std::endl;
+      return 1;
+    }
+    std::string line;
+    while (std::getline(file, line)) {
+      file_lines.push_back(line);
+    }
   }
 
   auto errors = run_lexer(filename);
@@ -89,11 +107,10 @@ int main(int argc, char** argv) {
   // Number of visible lines in the editor
   int visible_lines = 25;
 
-  // Renderer for the file content with scrolling
+  // Renderer for the file content
   auto file_view = Renderer([&] {
     scroll_offset = std::max(
         0, std::min(scroll_offset, (int)file_lines.size() - visible_lines));
-
     Elements elements;
     for (size_t i = scroll_offset;
          i < scroll_offset + visible_lines && i < file_lines.size(); ++i) {
@@ -110,8 +127,7 @@ int main(int argc, char** argv) {
   });
 
   // Renderer for the error list with clickable items
-  auto error_list = Container::Vertical({});  // Container for the errors
-
+  auto error_list = Container::Vertical({});
   for (const auto& error : errors) {
     auto error_button = Button(
         "Line " + std::to_string(error.line) + ": " + error.message,
@@ -123,14 +139,26 @@ int main(int argc, char** argv) {
     error_list->Add(error_button);
   }
 
-  // Renderer for the left panel
-  auto left_panel = Renderer([] {
+  // Generate the left panel based on the argument (file or directory)
+  std::vector<std::string> left_tree;
+  auto left_panel_buttons = Container::Vertical({});
+
+  if (fs::is_directory(filename)) {
+    build_tree(filename, left_tree);  // Parse the directory to build the tree
+  } else {
+    left_tree.push_back("File: " + filename);  // If it's a file, show it
+  }
+
+  // Create clickable buttons for the left panel
+  for (const auto& item : left_tree) {
+    left_panel_buttons->Add(Button(item, [] {}, ButtonOption::Ascii()));
+  }
+
+  auto left_panel = Renderer(left_panel_buttons, [&] {
     return vbox({
                text("Project Explorer") | bold | hcenter,
                separator(),
-               text("File 1"),
-               text("File 2"),
-               text("File 3"),
+               left_panel_buttons->Render(),
            }) |
            flex;
   });
