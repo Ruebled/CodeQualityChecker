@@ -54,3 +54,5 @@ dkms.conf
 # Build results
 build/
 bin/
+lexer.c
+analyzer
