@@ -71,11 +71,19 @@ int main(int argc, char** argv) {
 
   // Track the current highlighted line
   int current_line = 0;
+  // Track the current scroll position
+  int scroll_offset = 0;
+  // Number of visible lines in the editor
+  int visible_lines = 25;
 
-  // Renderer for the file content
+  // Renderer for the file content with scrolling
   auto file_view = Renderer([&] {
+    scroll_offset = std::max(
+        0, std::min(scroll_offset, (int)file_lines.size() - visible_lines));
+
     Elements elements;
-    for (size_t i = 0; i < file_lines.size(); ++i) {
+    for (size_t i = scroll_offset;
+         i < scroll_offset + visible_lines && i < file_lines.size(); ++i) {
       auto line_number = text(std::to_string(i + 1) + " ") | color(Color::Blue);
       auto line_content = text(file_lines[i]);
       if (static_cast<int>(i) == current_line) {
@@ -94,8 +102,11 @@ int main(int argc, char** argv) {
   for (const auto& error : errors) {
     auto error_button = Button(
         "Line " + std::to_string(error.line) + ": " + error.message,
-        [&] { current_line = error.line - 1; },
-        ButtonOption::Ascii());  // Adjust to zero-based index
+        [&] {
+          current_line = error.line - 1;
+          scroll_offset = std::max(0, error.line - 1 - visible_lines / 2);
+        },
+        ButtonOption::Ascii());
     error_list->Add(error_button);
   }
 
