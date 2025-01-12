@@ -1,4 +1,7 @@
+#include <limits.h>
+#include <unistd.h>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -18,12 +21,36 @@ struct Error {
   std::string message;
 };
 
+std::string get_executable_path() {
+  char buffer[PATH_MAX];
+  ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+  if (len == -1) {
+    perror("readlink");
+    return "";
+  }
+  buffer[len] = '\0';
+  std::string exec_path(buffer);
+
+  // Get the directory of the executable
+  size_t pos = exec_path.find_last_of('/');
+  if (pos != std::string::npos) {
+    return exec_path.substr(0, pos) + "/analyzer";
+  }
+  return "";
+}
+
 // Function to run the lexer app and capture its output
 std::vector<Error> run_lexer(const std::string& filename) {
   std::vector<Error> errors;
 
+  std::string analyzer_path = get_executable_path();
+  if (analyzer_path.empty()) {
+    std::cerr << "Failed to determine analyzer path" << std::endl;
+    return errors;
+  }
+
   // Command to invoke the lexer
-  std::string command = "./../../bin/analyzer " + filename;
+  std::string command = analyzer_path + " " + filename;
   FILE* pipe = popen(command.c_str(), "r");
   if (!pipe) {
     perror("Failed to run lexer");
@@ -200,8 +227,10 @@ int main(int argc, char** argv) {
   // Modify this section to display only the file name or directory name
   auto left_panel_buttons = Container::Vertical({});
   for (const auto& item : left_tree) {
-    std::string display_name =
-        fs::path(item).filename().string();  // Get the file name only
+    // Get the relative path from the base path and convert it to a string for
+    // display
+    fs::path full_path = base_path / item;
+    std::string display_name = fs::relative(full_path, base_path).string();
     left_panel_buttons->Add(Button(
         display_name,  // Display only the file name
         [&, item] {
